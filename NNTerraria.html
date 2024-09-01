@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="dcterms.date" content="2024-08-26" />
+  <title>Hamood</title>
+  <link rel="stylesheet" href="reset.css" />
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+    <button onclick="window.location.href='index.html'">Back to Homepage</button>
+
+  <h1>Building a Neural Network in Terraria (WIP)</h1>
+  <p>
+    After seeing someone <a href="https://www.youtube.com/watch?v=zXPiqk0-zDY">build a computer in Terraria </a> and seeing someone <a href="https://www.youtube.com/watch?v=DQ0lCm0J3PM">build a neural network in Minecraft</a>, I was inspired to build a neural network in Terraria.
+  </p>
+
+  <h2>Brief Overview of Terraria Wiring</h2>
+  <p>
+    Terraria is an action-adventure sandbox game that allows players to build and explore their own worlds.
+    One of the key features of Terraria is the ability to wire blocks together to create complex systems.
+  </p>
+  <p>I'm going to keep it pretty simple. There are four different color wires: Red, Blue, Green, and Yellow.</p>
+  <p>There are also logic gates in Terraria: AND, NAND, OR, NOR, XOR, XNOR</p>
+
+  <h2>Let's break it down into steps</h2>
+  <h3>Training the Neural Network using Python</h3>
+  <p>This was a pretty simple step. I downloaded the MNIST dataset and trained a simple neural network using PyTorch.</p>
+  <p>Code here:</p>
+  <details>
+    <summary>NN Training</summary>
+    <pre><code>import torch
+        import torch.nn as nn
+        import torch.optim as optim
+        import torchvision
+        import torchvision.transforms as transforms
+        
+        # Define a simple neural network
+        class NeuralNetwork(nn.Module):
+            def __init__(self):
+                super(NeuralNetwork, self).__init__()
+                self.fc1 = nn.Linear(28 * 28, 128)
+                self.fc2 = nn.Linear(128, 64)
+                self.fc3 = nn.Linear(64, 10)
+        
+            def forward(self, x):
+                x = x.view(-1, 28 * 28)
+                x = torch.relu(self.fc1(x))
+                x = torch.relu(self.fc2(x))
+                x = self.fc3(x)
+                return x
+        
+        # Load the MNIST dataset
+        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+        trainset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+        
+        # Define the loss function and optimizer
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.SGD(model.parameters(), lr=0.1)
+        
+        # Train the neural network
+        for epoch in range(5):  # Number of epochs
+            for i, (inputs, labels) in enumerate(trainloader):
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+        
+        print("Training complete")
+          </pre></code>
+  </details>
+
+  
+  <h3>Configuring a Display in Terraria</h3>
+  <p>Using wires and display boxes, we can configure a display in Terraria to allow the user to draw a number.</p>
+  <img src="images/TerrariaNN/TerrariaNN1.png" alt="TerrariaNN1" style="width: 50%; height: auto;">
+  <p>Display boxes are turned when two signals from the same source trigger the box. We wire it up so that each pixel in the 28x28 display is triggered by a switch and the buffer is saved to an AND gate so that it can be used later for the weights.</p>
+
+
+  <h3>Inputting the weights into Terraria</h3>
+  <p>A problem I ran into was that Terraria doesn't support fractional weights, so I had to multiply the weights by 10 and truncate any extra decimal points. This allowed me to keep the weights at an integer value.</p>
+  <p>Code here:</p>
+  <pre><code>
+
+  </code></pre>
+  <p>After doing this, we can see that the accuracy of the neural network is 89.5%, which is pretty good</p>
+  <p>The next step now is to multiply the weights and sum them up for each neuron then sum the results to get the final output.</p>
+
+  <img src="NeuronSummation.svg" alt="Neuron Summation" style="width: 50%; height: auto;" class="invertible-image">
+
+  <p>Multiplying the weights and summing them up would take a lot of computational power and I don't think Terraria could even handle that. So I had to come up with a different solution.</p>
+  <p>Since the display is either 1 or 0, we can sum the weights of the inputs that are 1 and just ignore it if it's 0. </p>
+  <p>I had to go back to retrain the neural network on input images where each pixel is binary.</p>
+  <p>Code here:</p>
+  <pre><code>
+
+  </code></pre>
+  <p>Now we can see that the accuracy of the neural network is 99.2%!</p>
+  <p>Addition and Subtraction was pretty simple. Using binary values, I had made a full adder circuit.</p>
+  <p>How a full adder works is that it takes two inputs and a carry input and adds them up to give an output and a carry output.</p>
+  <img src="FullAdder.svg" alt="Full Adder" style="width: 50%; height: auto;" class="invertible-image">
+  <p>Stacking them up X amount of times would give us an X bit adder.</p>
+
+  <p>Now we had everything ready to start inputting the weights in binary values using logic gates and wiring them to a full adder.</p>
+  <p>I use <a href="https://github.com/TEdit/Terraria-Map-Editor/blob/main/src/TEdit.Terraria/World.FileV2.cs#L2326">TEdit</a> which is an open-source Terraria Map Editor, it makes modifying the world easier.</p>
+  <p>The problem is, we have 784 weights with 10 neurons, manually inputting them is quite tedious even with mods that can copy paste blocks.</p>
+
+  <p>I had to come up with a solution to somehow programmatically create a schematic file so I can just paste it in the world.</p>
+  <p>My idea was to reverse engineer Terraria schematic files so I can just spin up a script to modify it.</p>
+  <p>Looking through the source code and examining the schematic file through a hex editor, I hada good idea of how they were made.</p>
+  
+  <h4>Modifying Schematic Files using Hex Editor</h4>
+  <p>The way the schematic files work is:</p>
+  <details>
+    <summary>TEdit Function for Saving Schematics</summary>
+        <pre>
+            <code>
+                private void SaveV2(BinaryWriter bw, uint version)
+                {
+                    bw.Write(Name);
+                    bw.Write(version);
+                    bw.Write(Size.X);
+                    bw.Write(Size.Y);
+            
+                    var frames = WorldConfiguration.SaveConfiguration.GetData((int)version).GetFrames();
+                    World.SaveTiles(Tiles, (int)version, Size.X, Size.Y, bw, frames);
+                    World.SaveChests(Chests, bw, (int)version);
+                    World.SaveSigns(Signs, bw, (int)version);
+            
+                    bw.Write(Name);
+                    bw.Write(WorldConfiguration.CompatibleVersion);
+                    bw.Write(Size.X);
+                    bw.Write(Size.Y);
+                }
+            </code>
+        </pre>
+  </details>
+  <p>We can see that it writes the name of the file, the version, the dimensions of the schematic, the tiles, the file name, the world configuration, and then finally the dimensions of the schematic.</p>
+  <p>All we had to do now was to find the hexadecimal that corresponds to all logic gates, lamps, and wires.</p>
+  <p>We save a schematic of a simple Or gate and 2 lamps on it and examine it:</p>
+  <img src="HexEditor.png" alt="TerrariaNN1" style="width: 100%; height: auto;">
+  <p>On my to-do list is to make a python library so people can easily create schematic files programmatically. For now, we will just do it the good old manual way.</p>
+  <p>We end up with these values:</p>
+  <pre>
+    <code>
+        Lamp = 27 01 10 A3 01 00 00 00 00 9B 19
+        AND Gate = 27 01 10 A4 01 00 00 00 00 9B 19
+        Empty Space = 05 01 10 9B 19
+    </code>
+  </pre>
+  <p>Great, now we can cook up some python code to modify the schematic files.</p>
+  <p>We go back to my code with the NN, turn all weights to binary format, feed that array to the python script to programmatically place the AND gates and lamps.</p>
+  <p>Now we have all of our weights stored in a schematic that we can just paste into the world.</p>
+
+  <p>Implementation in Terraria:</p>
+
+  <h3>Displaying the output in Terraria</h3>
+  <h1>Work in Progress</h1>  
+
+</body>
