@@ -16,6 +16,7 @@
   <p>
     After seeing someone <a href="https://www.youtube.com/watch?v=zXPiqk0-zDY">build a computer in Terraria </a> and seeing someone <a href="https://www.youtube.com/watch?v=DQ0lCm0J3PM">build a neural network in Minecraft</a>, I was inspired to build a neural network in Terraria.
   </p>
+  <p>Credit goes to both creators for invaluable info about terraria and Neural Networks.</p>
 
   <h2>Brief Overview of Terraria Wiring</h2>
   <p>
@@ -30,64 +31,115 @@
   <p>This was a pretty simple step. I downloaded the MNIST dataset and trained a simple neural network using PyTorch.</p>
   <p>Code here:</p>
   <details>
-    <summary>NN Training</summary>
+    <summary> NN Training</summary>
     <pre><code>import torch
-        import torch.nn as nn
-        import torch.optim as optim
-        import torchvision
-        import torchvision.transforms as transforms
+      import torch.nn as nn
+      import torch.optim as optim
+      import torchvision
+      import torchvision.transforms as transforms
+      import numpy as np
+      
+      # Set device
+      device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+      transform = transforms.Compose([
+        transforms.ToTensor(),
+      ])
+
+      # Load the MNIST dataset
+      train_dataset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+      train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=128, shuffle=True)
+      test_dataset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+      test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=128, shuffle=False)
+
+      # Define the neural network
+      class SimpleNN(nn.Module):
+          def __init__(self):
+              super(SimpleNN, self).__init__()
+              self.fc1 = nn.Linear(28*28, 10)
+              self.fc2 = nn.Linear(10, 10)
+          
+          def forward(self, x):
+              x = x.view(-1, 28*28)
+              x = torch.relu(self.fc1(x))
+              x = torch.softmax(self.fc2(x), dim=1)  # Add softmax activation
+              return x
+
+      model = SimpleNN().to(device)
+
+      # Define loss and optimizer
+      criterion = nn.CrossEntropyLoss()
+      optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+      # Train the model
+      num_epochs = 15
+      for epoch in range(num_epochs):
+          for i, (images, labels) in enumerate(train_loader):
+              images, labels = images.to(device), labels.to(device)
+
+              # Forward pass
+              outputs = model(images)
+              loss = criterion(outputs, labels)
+
+              # Backward and optimize
+              optimizer.zero_grad()
+              loss.backward()
+              optimizer.step()
+
+              if (i+1) % 100 == 0:
+                  print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}')
+
+
+      model.eval()
+      correct = 0
+      total = 0
+      
+      with torch.no_grad():
+        for images, labels in test_loader:
+          images, labels = images.to(device), labels.to(device)
+          outputs = model(images)
+          _, predicted = torch.max(outputs.data, 1)
+          total += labels.size(0)
+          correct += (predicted == labels).sum().item()
         
-        # Define a simple neural network
-        class NeuralNetwork(nn.Module):
-            def __init__(self):
-                super(NeuralNetwork, self).__init__()
-                self.fc1 = nn.Linear(28 * 28, 128)
-                self.fc2 = nn.Linear(128, 64)
-                self.fc3 = nn.Linear(64, 10)
-        
-            def forward(self, x):
-                x = x.view(-1, 28 * 28)
-                x = torch.relu(self.fc1(x))
-                x = torch.relu(self.fc2(x))
-                x = self.fc3(x)
-                return x
-        
-        # Load the MNIST dataset
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
-        trainset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-        trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
-        
-        # Define the loss function and optimizer
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(model.parameters(), lr=0.1)
-        
-        # Train the neural network
-        for epoch in range(5):  # Number of epochs
-            for i, (inputs, labels) in enumerate(trainloader):
-                optimizer.zero_grad()
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-        
-        print("Training complete")
+      accuracy = 100 * correct / total
+      print(f'Accuracy: {accuracy:.2f}%')
+
+
           </pre></code>
+
+      <p>Accuracy: 93.05%</p>
   </details>
 
-  
   <h3>Configuring a Display in Terraria</h3>
-  <p>Using wires and display boxes, we can configure a display in Terraria to allow the user to draw a number.</p>
-  <img src="images/TerrariaNN/TerrariaNN1.png" alt="TerrariaNN1" style="width: 50%; height: auto;">
-  <p>Display boxes are turned when two signals from the same source trigger the box. We wire it up so that each pixel in the 28x28 display is triggered by a switch and the buffer is saved to an AND gate so that it can be used later for the weights.</p>
+  <p>Using wires and pixel boxes, we can configure a display in Terraria to allow the user to draw a number.</p>
+  <img src="TerrariaDisplayBox.png" alt="TerrariaDisplayBox" style="width: 50%; height: auto;">
+  <p>Source: <a href="https://forums.terraria.org/index.php?threads/pixel-box-psa.114717/" target="_blank" rel="noopener noreferrer">Terraria Forums</a></p>
+  <p>Credit: ekintator</p>
+  <p>Pixel boxes are turned when two signals from the same source trigger the box. We wire it up so that each pixel in the 28x28 display is triggered by a switch and the buffer is saved to an AND gate so that it can be used later for the weights.</p>
 
 
   <h3>Inputting the weights into Terraria</h3>
   <p>A problem I ran into was that Terraria doesn't support fractional weights, so I had to multiply the weights by 10 and truncate any extra decimal points. This allowed me to keep the weights at an integer value.</p>
   <p>Code here:</p>
-  <pre><code>
+  <details>
+    <summary> Convert Weights to Integers</summary>
+    <pre>
+      <code>
+        # Define the conversion function to fixed-point integers
+        def to_fixed(float_value, multiplier=10):
+          return int(round(float_value * multiplier))
 
-  </code></pre>
-  <p>After doing this, we can see that the accuracy of the neural network is 89.5%, which is pretty good</p>
+        # Convert weights and biases to fixed-point integers by multiplying by 10
+        weights_fc1_fixed = np.vectorize(to_fixed)(weights_fc1, 10).astype('int')
+        biases_fc1_fixed = np.vectorize(to_fixed)(biases_fc1, 10).astype('int')
+        weights_fc2_fixed = np.vectorize(to_fixed)(weights_fc2, 10).astype('int')
+        biases_fc2_fixed = np.vectorize(to_fixed)(biases_fc2, 10).astype('int')
+      </code>
+    </pre>
+    <p>Accuracy: 92.75%</p>
+    </details>
+  <p>After doing this, we can see that the accuracy of the neural network is 92.75%, which is still pretty good</p>
   <p>The next step now is to multiply the weights and sum them up for each neuron then sum the results to get the final output.</p>
 
   <img src="NeuronSummation.svg" alt="Neuron Summation" style="width: 50%; height: auto;" class="invertible-image">
@@ -96,14 +148,32 @@
   <p>Since the display is either 1 or 0, we can sum the weights of the inputs that are 1 and just ignore it if it's 0. </p>
   <p>I had to go back to retrain the neural network on input images where each pixel is binary.</p>
   <p>Code here:</p>
+  <details>
+  <summary> NN Training Binarized Images</summary>
   <pre><code>
+      # Define a transform to binarize the MNIST datapoints
+      class BinarizeTransform:
+        def __call__(self, img):
+          return (img > 0.5).float()
+      
+          transofmr = transforms.Compose([
+            transforms.ToTensor()
+            BinarizeTransform()
+          ])
 
+     # Same code as before continues..
   </code></pre>
-  <p>Now we can see that the accuracy of the neural network is 99.2%!</p>
+  <p>Accuracy: 84.36%</p>
+</details>
+  <p>Our NN after binarizing the images and multiplying the weights by 10 and converting them to intergers, our accuracy is 84.36% which is still good.</p>
   <p>Addition and Subtraction was pretty simple. Using binary values, I had made a full adder circuit.</p>
   <p>How a full adder works is that it takes two inputs and a carry input and adds them up to give an output and a carry output.</p>
   <img src="FullAdder.svg" alt="Full Adder" style="width: 50%; height: auto;" class="invertible-image">
   <p>Stacking them up X amount of times would give us an X bit adder.</p>
+
+  <p>Implenentation in Terraria:</p>
+  <img src="full-adder.gif" alt="Full Adder Terraria" style="width: 30%; height: 30%;">
+  <p>Source: <a href="https://forums.terraria.org/index.php?threads/simplifying-the-full-adder-module.76084/" target="_blank" rel="noopener noreferrer">Terraria Forums</a></p>
 
   <p>Now we had everything ready to start inputting the weights in binary values using logic gates and wiring them to a full adder.</p>
   <p>I use <a href="https://github.com/TEdit/Terraria-Map-Editor/blob/main/src/TEdit.Terraria/World.FileV2.cs#L2326">TEdit</a> which is an open-source Terraria Map Editor, it makes modifying the world easier.</p>
